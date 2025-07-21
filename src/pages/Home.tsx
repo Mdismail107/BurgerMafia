@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -7,137 +7,103 @@ import Navbar from '../components/Layout/Navbar';
 import HeroSection from '../components/Home/HeroSection';
 import MenuCard from '../components/Cards/MenuCard';
 import BlogCard from '../components/Cards/BlogCard';
-import { menuAPI, blogAPI } from '../services/api';
-import { MenuItem, BlogPost } from '../types';
+import { MenuItem, BlogPost } from '../components/types';
 import { Helmet } from 'react-helmet-async';
-
 
 const MAX_WIDTH = 'max-w-7xl';
 const SECTION_PADDING = 'py-20';
 const CONTAINER_PADDING = 'px-4 sm:px-6 lg:px-8';
 
-interface HomeState {
-  featuredItems: MenuItem[];
-  featuredPosts: BlogPost[];
-  loading: boolean;
-  error: string | null;
-}
+// Static data for featured menu items
+const FEATURED_MENU_ITEMS: MenuItem[] = [
+  {
+    id: '1',
+    name: 'Mafia Boss Burger',
+    slug: 'mafia-boss-burger',
+    description: 'Our signature double beef patty with special sauce, aged cheddar, crispy bacon, and fresh lettuce on a brioche bun.',
+    price: 18.99,
+    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&h=300&fit=crop',
+    is_available: true,
+    category: 'Signature'
+  },
+  {
+    id: '2',
+    name: 'Godfather Supreme',
+    slug: 'godfather-supreme',
+    description: 'Triple-stacked beef patties with mushrooms, caramelized onions, swiss cheese, and truffle aioli.',
+    price: 24.99,
+    image: 'https://images.unsplash.com/photo-1553979459-d2229ba7433a?w=500&h=300&fit=crop',
+    is_available: true,
+    category: 'Premium'
+  },
+  {
+    id: '3',
+    name: 'Chicken Capone',
+    slug: 'chicken-capone',
+    description: 'Crispy chicken breast with avocado, pepper jack cheese, jalapeños, and chipotle mayo.',
+    price: 16.99,
+    image: 'https://images.unsplash.com/photo-1606755962773-d324e9a13086?w=500&h=300&fit=crop',
+    is_available: true,
+    category: 'Chicken'
+  }
+];
+
+// Static data for featured blog posts
+const FEATURED_BLOG_POSTS: BlogPost[] = [
+  {
+    id: '1',
+    title: 'The Art of Perfect Burger Patties',
+    slug: 'art-of-perfect-burger-patties',
+    content: 'Discover the secrets behind our hand-crafted burger patties and what makes them so delicious...',
+    excerpt: 'Learn how we craft the perfect burger patty with premium ingredients and time-tested techniques.',
+    image: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=500&h=300&fit=crop',
+    created_at: '2024-01-15T10:00:00Z',
+    author: 'Chef Marco'
+  },
+  {
+    id: '2',
+    title: 'New Menu Items Coming This Spring',
+    slug: 'new-menu-items-spring',
+    content: 'We are excited to announce our new seasonal menu items featuring fresh spring ingredients...',
+    excerpt: 'Get ready for our exciting new spring menu featuring fresh, seasonal ingredients and bold flavors.',
+    image: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?w=500&h=300&fit=crop',
+    created_at: '2024-01-12T14:30:00Z',
+    author: 'BurgerMafia Team'
+  },
+  {
+    id: '3',
+    title: 'Behind the Scenes: Our Kitchen Stories',
+    slug: 'behind-scenes-kitchen-stories',
+    content: 'Take a peek behind the curtain and see how our talented chefs prepare your favorite burgers...',
+    excerpt: 'Go behind the scenes and discover the passion and dedication that goes into every burger we make.',
+    image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=500&h=300&fit=crop',
+    created_at: '2024-01-08T16:45:00Z',
+    author: 'Chef Isabella'
+  }
+];
 
 const Home: React.FC = () => {
-  const [state, setState] = useState<HomeState>({
-    featuredItems: [],
-    featuredPosts: [],
-    loading: true,
-    error: null,
-  });
-
-  useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
-
-    const fetchData = async () => {
-      try {
-        const [menuResponse, blogResponse] = await Promise.all([
-          menuAPI.getAll({ signal: controller.signal }),
-          blogAPI.getAll({ signal: controller.signal })
-        ]);
-
-        if (isMounted) {
-          setState({
-            featuredItems: extractData<MenuItem>(menuResponse.data)
-              .map(item => ({ ...item, id: String(item.id) }))
-              .slice(0, 3),
-            featuredPosts: extractData<BlogPost>(blogResponse.data)
-              .map(post => ({
-                ...post,
-                id: String(post.id),
-                author: typeof post.author === 'object' ? post.author.username : post.author
-              }))
-              .slice(0, 3),
-            loading: false,
-            error: null,
-          });
-        }
-      } catch (err) {
-        if (isMounted && !controller.signal.aborted) {
-          console.error('Error fetching data:', err);
-          setState(prev => ({
-            ...prev,
-            loading: false,
-            error: err instanceof Error ? err.message : 'Failed to load data',
-          }));
-        }
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, []);
-
-  const extractData = <T,>(data: any): T[] => {
-    if (!data) return [];
-    if (Array.isArray(data)) return data;
-    return data.results || data.items || data.menu || data.posts || data.blogs || [];
-  };
-
-  const { featuredItems, featuredPosts, loading, error } = state;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" aria-live="polite">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500 mx-auto" />
-          <p className="mt-4 text-lg">Loading delicious content...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" aria-live="polite">
-        <div className="text-center p-8 bg-red-100 rounded-lg max-w-md">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Content</h2>
-          <p className="text-red-800 mb-6">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Reload Page
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
-    <Helmet>
+      <Helmet>
         <title>BurgerMafia | Home</title>
         <meta name="description" content="Best gourmet burgers in town." />
       </Helmet>
 
-      <Navbar /> {/* ✅ added navbar */}
+      <Navbar />
       <SEO
         title="Premium Gourmet Burgers"
         description="Experience the finest handcrafted burgers made with premium ingredients."
       />
       <HeroSection />
-      <FeaturedMenuSection items={featuredItems} />
-      <FeaturedBlogSection posts={featuredPosts} />
+      <FeaturedMenuSection items={FEATURED_MENU_ITEMS} />
+      <FeaturedBlogSection posts={FEATURED_BLOG_POSTS} />
       <CTASection />
     </>
   );
 };
 
-// ─────────────────────────────────────
 // Sub-components
-// ─────────────────────────────────────
-
 interface FeaturedMenuSectionProps {
   items: MenuItem[];
 }
@@ -274,8 +240,8 @@ FeaturedBlogSection.propTypes = {
       id: PropTypes.string.isRequired,
       title: PropTypes.string.isRequired,
       slug: PropTypes.string.isRequired,
-      content: PropTypes.string.isRequired,
-      excerpt: PropTypes.string.isRequired,
+      content: PropTypes.string,
+      excerpt: PropTypes.string,
       image: PropTypes.string,
       created_at: PropTypes.string.isRequired,
       author: PropTypes.string.isRequired,
